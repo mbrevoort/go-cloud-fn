@@ -19,6 +19,14 @@ func GenerateIndex(data IndexTemplateData) (string, error) {
 	return parseTemplate(string(byt), data)
 }
 
+func GeneratePackageJson(data IndexTemplateData) (string, error) {
+	byt, err := Asset("package.json")
+	if err != nil {
+		return "", err
+	}
+	return parseTemplate(string(byt), data)
+}
+
 func parseTemplate(templateString string, data interface{}) (string, error) {
 	tmpl, err := template.New("name").Parse(templateString)
 	if err != nil {

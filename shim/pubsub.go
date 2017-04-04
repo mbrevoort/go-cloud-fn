@@ -6,19 +6,18 @@ import (
 	"log"
 	"os"
 
-	"google.golang.org/api/pubsub/v1beta2"
+	"cloud.google.com/go/pubsub"
 )
 
-type PubsubHandlerFunc func(message pubsub.PubsubMessage)
+type PubsubHandlerFunc func(message pubsub.Message)
 
 func HandlePubSubMessage(h PubsubHandlerFunc) {
-
 	stdin, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	var message pubsub.PubsubMessage
+	var message pubsub.Message
 	err = json.Unmarshal(stdin, &message)
 	if err != nil {
 		log.Fatal(err)

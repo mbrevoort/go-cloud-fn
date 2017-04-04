@@ -1,0 +1,7 @@
+{
+  "name": "{{.FunctionName}}",
+  "version": "0.0.0",
+  "dependencies": {
+    "dotenv": "^4.0.0"
+  }
+}

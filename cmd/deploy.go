@@ -33,15 +33,24 @@ set of parameters.`,
 		}
 		functionName := args[0]
 		targetDir := "./target/" + uuid.NewV4().String() + "/"
-		index, err := t.GenerateIndex(t.IndexTemplateData{
+
+		templateData := t.IndexTemplateData{
 			FunctionName: functionName,
 			TargetDir:    targetDir,
 			TriggerHTTP:  triggerHTTP,
-		})
+		}
+
+		index, err := t.GenerateIndex(templateData)
 		if err != nil {
 			log.Println(err)
 			return
 		}
+		pjson, err := t.GeneratePackageJson(templateData)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
 		err = os.MkdirAll(targetDir, os.ModePerm)
 		if err != nil {
 			log.Println(err)
@@ -70,14 +79,13 @@ set of parameters.`,
 
 		//Use functions if it's emulator we're deploying to.
 		var buildCmd string
-		var indexPath string
+		indexPath := targetDir + "index.js"
+		pjsonPath := targetDir + "package.json"
 		if emulator {
 			deployArguments[0] = "functions deploy"
 			buildCmd = "go build -o " + targetDir + functionName
-			indexPath = targetDir + "index.js"
 		} else {
 			buildCmd = "GOOS=linux go build -o " + targetDir + functionName
-			indexPath = targetDir + "index.js"
 			deployArguments = append(
 				deployArguments,
 				"--memory", memory,
@@ -93,6 +101,24 @@ set of parameters.`,
 		if err != nil {
 			log.Println(err)
 			return
+		}
+		err = ioutil.WriteFile(pjsonPath, []byte(pjson), os.ModePerm)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+
+		if dotenv != "" {
+			env, err := ioutil.ReadFile(dotenv)
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			err = ioutil.WriteFile(targetDir+".env", env, os.ModePerm)
+			if err != nil {
+				log.Println(err)
+				return
+			}
 		}
 
 		compile, err := exec.Command("sh", "-c", buildCmd).CombinedOutput()
@@ -113,6 +139,7 @@ var triggerTopic string
 var memory string
 var timeout string
 var region string
+var dotenv string
 
 func init() {
 	RootCmd.AddCommand(deployCmd)
@@ -124,4 +151,5 @@ func init() {
 	deployCmd.Flags().StringVarP(&memory, "memory", "m", "1024MB", "Set function memory [MAX 2048MB]")
 	deployCmd.Flags().StringVarP(&timeout, "timeout", "o", "540s", "Set function timeout [MAX 540s]")
 	deployCmd.Flags().StringVarP(&region, "region", "r", "", "Set gcloud region")
+	deployCmd.Flags().StringVarP(&dotenv, "dotenv", "v", "", "Pass to .env file")
 }
