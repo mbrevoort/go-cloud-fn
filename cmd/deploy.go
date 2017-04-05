@@ -42,18 +42,18 @@ set of parameters.`,
 
 		index, err := t.GenerateIndex(templateData)
 		if err != nil {
-			log.Println(err)
+			logCLIErr(err.Error())
 			return
 		}
 		pjson, err := t.GeneratePackageJson(templateData)
 		if err != nil {
-			log.Println(err)
+			logCLIErr(err.Error())
 			return
 		}
 
 		err = os.MkdirAll(targetDir, os.ModePerm)
 		if err != nil {
-			log.Println(err)
+			logCLIErr(err.Error())
 			return
 		}
 
@@ -99,35 +99,48 @@ set of parameters.`,
 
 		err = ioutil.WriteFile(indexPath, []byte(index), os.ModePerm)
 		if err != nil {
-			log.Println(err)
+			logCLIErr(err.Error())
 			return
 		}
 		err = ioutil.WriteFile(pjsonPath, []byte(pjson), os.ModePerm)
 		if err != nil {
-			log.Println(err)
+			logCLIErr(err.Error())
 			return
 		}
 
 		if dotenv != "" {
 			env, err := ioutil.ReadFile(dotenv)
 			if err != nil {
-				log.Println(err)
+				logCLIErr(err.Error())
 				return
 			}
 			err = ioutil.WriteFile(targetDir+".env", env, os.ModePerm)
 			if err != nil {
-				log.Println(err)
+				logCLIErr(err.Error())
 				return
 			}
 		}
 
-		compile, err := exec.Command("sh", "-c", buildCmd).CombinedOutput()
+		logCLI("Building " + functionName)
+		compile := exec.Command("sh", "-c", buildCmd)
+		compile.Stdout = os.Stdout
+		compile.Stderr = os.Stderr
+		err = compile.Run()
 		if err != nil {
-			log.Println(compile)
+			logCLIErr(err.Error())
 			return
 		}
-		deploy, _ := exec.Command("sh", "-c", strings.Join(append(deployArguments, trigger...), " ")).CombinedOutput()
-		log.Println(string(deploy))
+
+		logCLI("Deploying " + functionName)
+		deploy := exec.Command("sh", "-c", strings.Join(append(deployArguments, trigger...), " "))
+		deploy.Stdout = os.Stdout
+		deploy.Stderr = os.Stderr
+		err = deploy.Run()
+		if err != nil {
+			logCLIErr(err.Error())
+			return
+		}
+		logCLI("Finished")
 	},
 }
 
@@ -152,4 +165,12 @@ func init() {
 	deployCmd.Flags().StringVarP(&timeout, "timeout", "o", "540s", "Set function timeout [MAX 540s]")
 	deployCmd.Flags().StringVarP(&region, "region", "r", "", "Set gcloud region")
 	deployCmd.Flags().StringVarP(&dotenv, "dotenv", "v", "", "Pass to .env file")
+}
+
+func logCLI(line string) {
+	os.Stdout.WriteString("λ " + line + "\n")
+}
+
+func logCLIErr(line string) {
+	os.Stderr.WriteString("ø " + line + "\n")
 }

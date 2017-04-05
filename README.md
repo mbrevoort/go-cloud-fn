@@ -99,6 +99,7 @@ Usage:
   go-cloud-fn deploy <function-name> [flags]
 
 Flags:
+  -v, --dotenv string           Pass to .env file
   -e, --emulator                Deploy to emulator
   -m, --memory string           Set function memory [MAX 2048MB] (default "1024MB")
 	-r, --region string           Set gcloud region

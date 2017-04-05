@@ -9,7 +9,11 @@ import (
 	"cloud.google.com/go/pubsub"
 )
 
-type PubsubHandlerFunc func(message pubsub.Message)
+type PubsubHandlerFunc func(message pubsub.Message) error
+
+type PubsubResult struct {
+	Error error `json:"error"`
+}
 
 func HandlePubSubMessage(h PubsubHandlerFunc) {
 	stdin, err := ioutil.ReadAll(os.Stdin)
@@ -23,5 +27,12 @@ func HandlePubSubMessage(h PubsubHandlerFunc) {
 		log.Fatal(err)
 	}
 
-	h(message)
+	result := PubsubResult{
+		Error: h(message),
+	}
+	out, err := json.Marshal(&result)
+	if err != nil {
+		log.Fatal(err)
+	}
+	os.Stdout.Write(out)
 }

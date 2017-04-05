@@ -2,7 +2,7 @@ package template
 
 import (
 	"bytes"
-	"html/template"
+	"text/template"
 )
 
 type IndexTemplateData struct {

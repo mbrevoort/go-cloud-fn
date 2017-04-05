@@ -1,37 +1,41 @@
 require('dotenv').config()
 
-// Handle Background events according to spec
-function shimHandler (data) {
-  return new Promise((resolve, reject) => {
-    // Spawn the function and inject the env from the parent process.
-    const p = require('child_process').execFile('./{{.FunctionName}}', [], {
-      env: process.env
-    })
-    var lastMessage
-    p.stdin.setEncoding('utf-8')
-    // Log standard err messages to standard err
-    p.stderr.on('data', (err) => {
-      console.error(err.toString())
-    })
-    p.stdout.on('data', (out) => {
-      console.log(out.toString())
-      lastMessage = out
-    })
-    p.on('close', (code) => {
-      if (code !== 0) {
-        // This means the shim failed / panicked. So we reject hard.
-        reject()
-      } else {
-        // Resolve the promise with the latest output from stdout
-        // In case of shimming http, this is the response object.
-        resolve(lastMessage)
-      }
-    })
-    // Write the object/message/request to the shim's stdin and signal
-    // End of input.
-    p.stdin.write(JSON.stringify(data))
-    p.stdin.end()
+function shim (data, callback) {
+  let responsePayload = ''
+
+  // Spawn the function and inject the env from the parent process.
+  const p = require('child_process').execFile('./{{.FunctionName}}', [], {
+    env: process.env,
+    // Large responses over stdin were overruning the default stdio buffer.
+    // Since we don't need to work about any other concurrent requests or tenants, give it a healthy max
+    maxBuffer: 1048576 * 25
   })
+
+  p.stdin.setEncoding('utf-8')
+
+  // Log standard err messages to standard out
+  p.stderr.on('data', data => {
+    console.log(data)
+  })
+
+  p.stdout.on('data', data => {
+    responsePayload += data.toString()
+  })
+
+  p.on('error', err => {
+    console.log('go-cloud-fn shim received error', err)
+  })
+
+  p.on('close', exitCode => {
+    if (exitCode > 0) {
+      return callback(new Error('Shim exited unsuccessfully with code=' + exitCode), responsePayload)
+    }
+    return callback(null, responsePayload)
+  })
+
+  // Write the input data to stdin
+  p.stdin.write(JSON.stringify(data))
+  p.stdin.end()
 }
 
 // Handle http request
@@ -68,22 +72,41 @@ function handleHttp (req, res) {
     'url': fullUrl
   }
 
-  shimHandler(httpRequest)
-  .then((result) => {
-    var data = JSON.parse(result)
+  shim(httpRequest, (err, result) => {
+    if (err) {
+      err.code = 500
+      throw err
+    }
+
+    let data = null
+    try {
+      data = JSON.parse(result)
+    } catch (ex) {
+      err = new Error('Failed to parse shim response: ' + ex)
+      err.code = 500
+      throw err
+    }
+
     res.status(data.status_code)
     res.set(data.headers)
-    res.send(data.body)
-  })
-  .catch(() => {
-    res.status(500).end()
+    res.send(Buffer.from(data.body, 'base64'))
   })
 }
 
 // {{ if .TriggerHTTP }}
 exports['{{.FunctionName}}'] = function (req, res) {
   return handleHttp(req, res)
-}// {{ else }}
-exports['{{.FunctionName}}'] = function (event) {
-  return shimHandler(event.data)
-}// {{ end }}
+}
+// {{ else }}
+exports['{{.FunctionName}}'] = function (event, callback) {
+  shim(event.data, (err, result) => {
+    if (err) {
+      return callback(err)
+    }
+    if (result && result.error) {
+      return callback(new Error(result.error))
+    }
+    callback()
+  })
+}
+// {{ end }}
