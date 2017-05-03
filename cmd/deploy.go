@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
-	t "github.com/MartinSahlen/go-cloud-fn/template"
+	t "github.com/mbrevoort/go-cloud-fn/template"
 	uuid "github.com/satori/go.uuid"
 	"github.com/spf13/cobra"
 )

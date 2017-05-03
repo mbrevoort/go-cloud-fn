@@ -1,3 +1,5 @@
+This is a non-supported fork of MartinSahlen/go-cloud-fn for my own needs. It is a stop gap until there is proper support for Go in Google Cloud functions.
+
 # go-cloud-fn
 `go-cloud-fn` is a tool that allows you to write and deploy [Google cloud functions](https://cloud.google.com/functions/) in pure go.
 
