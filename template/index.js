@@ -23,7 +23,7 @@ function shim (data, callback) {
   })
 
   p.on('error', err => {
-    console.log('go-cloud-fn shim received error', err)
+    throw new Error('go-cloud-fn shim received error', err)
   })
 
   p.on('close', exitCode => {
@@ -99,12 +99,15 @@ exports['{{.FunctionName}}'] = function (req, res) {
 }
 // {{ else }}
 exports['{{.FunctionName}}'] = function (event, callback) {
-  shim(event.data, (err, result) => {
+  shim(event.data, (err, resultStr) => {
     if (err) {
-      return callback(err)
+      throw err
     }
+
+    let result = JSON.parse(resultStr)
     if (result && result.error) {
-      return callback(new Error(result.error))
+      throw err
+      // return callback(new Error(result.error))
     }
     callback()
   })
