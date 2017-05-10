@@ -99,6 +99,10 @@ exports['{{.FunctionName}}'] = function (req, res) {
 }
 // {{ else }}
 exports['{{.FunctionName}}'] = function (event, callback) {
+  console.log('event', event)
+  console.log('event.eventType', event.eventType)
+  console.log('event.resource', event.resource)
+  console.log('event.data', event.data)
   shim(event.data, (err, resultStr) => {
     if (err) {
       return callback(err)
