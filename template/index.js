@@ -101,15 +101,14 @@ exports['{{.FunctionName}}'] = function (req, res) {
 exports['{{.FunctionName}}'] = function (event, callback) {
   shim(event.data, (err, resultStr) => {
     if (err) {
-      throw err
+      return callback(err)
     }
 
     let result = JSON.parse(resultStr)
     if (result && result.error) {
-      throw err
-      // return callback(new Error(result.error))
+      return callback(new Error(result.error))
     }
-    callback()
+    callback(null, 'success')
   })
 }
 // {{ end }}
