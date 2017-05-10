@@ -116,7 +116,7 @@ function retryPubSub (event, originalError, callback) {
     return callback(originalError)
   }
 
-  topic.publish({ data }, (pubErr, messageIds) => {
+  topic.publish(data, (pubErr, messageIds) => {
     if (pubErr) {
       console.log('retryPubSub failed because', pubErr)
     } else {
