@@ -104,7 +104,10 @@ function topicNameFromResource (resource) {
 
 function retryPubSub (event, originalError, callback) {
   let topicName = topicNameFromResource(event.resource)
-  let data = event.data.data
+  let jsonStr = Buffer.from(event.data.data, 'base64').toString()
+  let data = JSON.parse(jsonStr)
+
+
   console.log(`Queueing retry of PubSub event ${event.eventId} to topic ${topicName}`)
 
   let topic = pubsub.topic(topicName)
@@ -113,7 +116,7 @@ function retryPubSub (event, originalError, callback) {
     return callback(originalError)
   }
 
-  topic.publish(data, { raw: true }, (pubErr, messageIds) => {
+  topic.publish({ data }, (pubErr, messageIds) => {
     if (pubErr) {
       console.log('retryPubSub failed because', pubErr)
     } else {
