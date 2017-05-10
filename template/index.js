@@ -1,3 +1,4 @@
+var pubsub = require('@google-cloud/pubsub')()
 require('dotenv').config()
 
 function shim (data, callback) {
@@ -93,24 +94,49 @@ function handleHttp (req, res) {
   })
 }
 
+function topicFromResource (resource) {
+  let parts = resource.split('topics/')
+  if (parts.length == 2) {
+    return pubsub.topic(parts[1])
+  }
+  return null
+}
+
+function retryPubSub (event, originalError, callback) {
+  console.log(`Queueing retry of PubSub event ${event.eventId}`)
+
+  let data = event.data
+  let topic = topicFromResource(event.resource)
+  if (!topic) {
+    console.log('retryPubSub failed because topic unknown')
+    return callback(originalError)
+  }
+
+  topic.publish({data}, (pubErr) => {
+    if (pubErr) {
+      console.log('retryPubSub failed because', pubErr)
+      return callback(originalError)
+    }
+
+    // still return the original error for the function execution
+    callback(originalError)
+  })
+}
+
 // {{ if .TriggerHTTP }}
 exports['{{.FunctionName}}'] = function (req, res) {
   return handleHttp(req, res)
 }
 // {{ else }}
 exports['{{.FunctionName}}'] = function (event, callback) {
-  console.log('event', event)
-  console.log('event.eventType', event.eventType)
-  console.log('event.resource', event.resource)
-  console.log('event.data', event.data)
   shim(event.data, (err, resultStr) => {
     if (err) {
-      return callback(err)
+      return retryPubSub(event, err, callback)
     }
 
     let result = JSON.parse(resultStr)
     if (result && result.error) {
-      return callback(new Error(result.error))
+      return retryPubSub(event, new Error(result.error), callback)
     }
     callback(null, 'success')
   })
