@@ -104,7 +104,7 @@ function topicNameFromResource (resource) {
 
 function retryPubSub (event, originalError, callback) {
   let topicName = topicNameFromResource(event.resource)
-  let data = event.data
+  let data = event.data.data
   console.log(`Queueing retry of PubSub event ${event.eventId} to topic ${topicName}`)
 
   let topic = pubsub.topic(topicName)
