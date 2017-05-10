@@ -12,7 +12,7 @@ import (
 type PubsubHandlerFunc func(message pubsub.Message) error
 
 type PubsubResult struct {
-	Error error `json:"error"`
+	Error string `json:"error,omitempty"`
 }
 
 func HandlePubSubMessage(h PubsubHandlerFunc) {
@@ -27,8 +27,14 @@ func HandlePubSubMessage(h PubsubHandlerFunc) {
 		log.Fatal(err)
 	}
 
+	errMessage := ""
+	err = h(message)
+	if err != nil {
+		errMessage = err.Error()
+	}
+
 	result := PubsubResult{
-		Error: h(message),
+		Error: errMessage,
 	}
 	out, err := json.Marshal(&result)
 	if err != nil {
