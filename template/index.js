@@ -94,28 +94,30 @@ function handleHttp (req, res) {
   })
 }
 
-function topicFromResource (resource) {
+function topicNameFromResource (resource) {
   let parts = resource.split('topics/')
   if (parts.length == 2) {
-    return pubsub.topic(parts[1])
+    return parts[1]
   }
   return null
 }
 
 function retryPubSub (event, originalError, callback) {
-  console.log(`Queueing retry of PubSub event ${event.eventId}`)
-
+  let topicName = topicNameFromResource(event.resource)
   let data = event.data
-  let topic = topicFromResource(event.resource)
+  console.log(`Queueing retry of PubSub event ${event.eventId} to topic ${topicName}`)
+
+  let topic = pubsub.topic(topicName)
   if (!topic) {
     console.log('retryPubSub failed because topic unknown')
     return callback(originalError)
   }
 
-  topic.publish({data}, (pubErr) => {
+  topic.publish(data, { raw: true }, (pubErr, messageIds) => {
     if (pubErr) {
       console.log('retryPubSub failed because', pubErr)
-      return callback(originalError)
+    } else {
+      console.log(`Queued new event ${messageIds} for event ${event.eventId} to topic ${topicName}`)
     }
 
     // still return the original error for the function execution
