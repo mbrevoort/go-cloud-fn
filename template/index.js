@@ -6,10 +6,10 @@ function shim (data, callback) {
 
   // Spawn the function and inject the env from the parent process.
   const p = require('child_process').execFile('./{{.FunctionName}}', [], {
-    env: process.env
+    env: process.env,
     // Large responses over stdin were overruning the default stdio buffer.
     // Since we don't need to work about any other concurrent requests or tenants, give it a healthy max
-    // maxBuffer: 1048576 * 25
+    maxBuffer: 1048576 * 25
   })
 
   p.stdin.setEncoding('utf-8')
@@ -134,24 +134,16 @@ exports['{{.FunctionName}}'] = function (req, res) {
 }
 // {{ else }}
 exports['{{.FunctionName}}'] = function (event, callback) {
-  console.log('PRE-SHIM', process.memoryUsage())
   shim(event.data, (err, resultStr) => {
-    console.log('POST-SHIM', process.memoryUsage())
     if (err) {
       return retryPubSub(event, err, callback)
     }
-
-    console.log('PRE-PARSE', process.memoryUsage())
 
     let result = JSON.parse(resultStr)
     if (result && result.error) {
       return retryPubSub(event, new Error(result.error), callback)
     }
-
-    console.log('PRE-CALLBACK', process.memoryUsage())
     callback(null, 'success')
-    console.log('POST-CALLBACK', process.memoryUsage())
   })
 }
 // {{ end }}
-
